@@ -11,6 +11,7 @@ package writer
 import (
 	"context"
 	"fmt"
+	"github.com/signalfx/signalfx-agent/pkg/core/writer/splunk"
 	"net"
 	"net/http"
 	"strings"
@@ -50,6 +51,7 @@ type SignalFxWriter struct {
 	dimensionClient   *dimensions.DimensionClient
 	datapointWriter   *sfxwriter.DatapointWriter
 	spanWriter        *sfxwriter.SpanWriter
+	splunkWriter      *splunk.Handler
 
 	// Monitors should send events to this
 	eventChan     chan *event.Event
@@ -138,6 +140,29 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 	sw.client = sfxclient.NewHTTPSink(sinkOptions...)
 
 	go sw.maintainLastMinuteActivity()
+
+	if conf.LogSplunkEnabled {
+		errors := make(chan error)
+		go func() {
+			for {
+				err := <-errors
+
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Error("Error shipping data to Splunk")
+			}
+		}()
+		sw.splunkWriter = &splunk.Handler{
+			URL:      conf.LogSplunkURL,
+			Token:    conf.LogSplunkToken,
+			Source:   conf.LogSplunkSource,
+			SourceType: conf.LogSplunkSourceType,
+			Index:    conf.LogSplunkIndex,
+			SkipTLSVerify: conf.LogSkipTLSVerify,
+			Errors: errors,
+		}
+		log.Infof("Sending splunk data to %s", conf.LogSplunkURL)
+	}
 
 	sw.client.AuthToken = conf.SignalFxAccessToken
 
@@ -264,6 +289,11 @@ func (sw *SignalFxWriter) preprocessDatapoint(dp *datapoint.Datapoint) bool {
 }
 
 func (sw *SignalFxWriter) sendDatapoints(ctx context.Context, dps []*datapoint.Datapoint) error {
+	if sw.splunkWriter != nil {
+		for _, d := range dps {
+			sw.splunkWriter.LogDataPoint(d)
+		}
+	}
 	// This sends synchonously
 	err := sw.client.AddDatapoints(ctx, dps)
 	if err != nil {
@@ -299,11 +329,13 @@ func (sw *SignalFxWriter) sendEvents(events []*event.Event) error {
 			events[i].Dimensions["host"] = sw.hostIDDims["host"]
 		}
 
+
 		if sw.conf.LogEvents {
 			log.WithFields(log.Fields{
 				"event": spew.Sdump(events[i]),
 			}).Debug("Sending event")
 		}
+		sw.splunkWriter.LogEvent(events[i])
 	}
 
 	err := sw.client.AddEvents(context.Background(), events)

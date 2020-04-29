@@ -110,6 +110,20 @@ type WriterConfig struct {
 	// handle the volume of trace spans and should be upgraded to more powerful
 	// hardware/networking.
 	MaxTraceSpansInFlight uint `yaml:"maxTraceSpansInFlight" default:"100000"`
+	// Enable logging to a Splunk Enterprise instance
+	LogSplunkEnabled bool `yaml:"splunkEnabled"`
+	// URL to Splunk HTTP Event Collector
+	LogSplunkURL string `yaml:"splunkURL"`
+	// Splunk HTTP Event Collector token
+	LogSplunkToken string `yaml:"splunkToken"`
+	// Splunk source field value, description of the source of the event
+	LogSplunkSource string `yaml:"splunkSource"`
+	// Splunk source type, optional name of a sourcetype field value
+	LogSplunkSourceType string `yaml:"splunkSourceType"`
+	// Splunk index, optional name of the Splunk index to store the event in
+	LogSplunkIndex string `yaml:"splunkIndex"`
+	// Skip verifying the certificate of the HTTP Event Collector
+	LogSkipTLSVerify bool `yaml:"splunkSkipTLSVerify"`
 	// The following are propagated from elsewhere
 	HostIDDims          map[string]string      `yaml:"-"`
 	IngestURL           string                 `yaml:"-"`
