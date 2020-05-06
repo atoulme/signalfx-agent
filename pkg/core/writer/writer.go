@@ -99,17 +99,23 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	dimensionClient, err := dimensions.NewDimensionClient(ctx, conf)
-	if err != nil {
-		cancel()
-		return nil, err
+	var dimensionClient *dimensions.DimensionClient
+	var err error
+	if conf.SignalFxAccessToken != "" {
+		dimensionClient, err = dimensions.NewDimensionClient(ctx, conf)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
 	}
 
 	var correlationClient correlations.CorrelationClient
-	correlationClient, err = correlations.NewCorrelationClient(ctx, conf)
-	if err != nil {
-		cancel()
-		return nil, err
+	if conf.SignalFxAccessToken != "" {
+		correlationClient, err = correlations.NewCorrelationClient(ctx, conf)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
 	}
 
 	sw := &SignalFxWriter{
@@ -137,7 +143,66 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 	default:
 		return nil, fmt.Errorf("trace export format '%s' is not supported", conf.TraceExportFormat)
 	}
-	sw.client = sfxclient.NewHTTPSink(sinkOptions...)
+
+	if conf.SignalFxAccessToken != "" {
+		sw.client = sfxclient.NewHTTPSink(sinkOptions...)
+		sw.client.AuthToken = conf.SignalFxAccessToken
+
+		sw.client.Client.Transport = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   3 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: conf.MaxRequests,
+			IdleConnTimeout:     30 * time.Second,
+			TLSHandshakeTimeout: 10 * time.Second,
+		}
+
+		dpEndpointURL, err := conf.ParsedIngestURL().Parse("v2/datapoint")
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error":     err,
+				"ingestURL": conf.ParsedIngestURL().String(),
+			}).Error("Could not construct datapoint ingest URL")
+			return nil, err
+		}
+		sw.client.DatapointEndpoint = dpEndpointURL.String()
+
+		eventEndpointURL := conf.ParsedEventEndpointURL()
+		if eventEndpointURL == nil {
+			var err error
+			eventEndpointURL, err = conf.ParsedIngestURL().Parse("v2/event")
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error":     err,
+					"ingestURL": conf.ParsedIngestURL().String(),
+				}).Error("Could not construct event ingest URL")
+				return nil, err
+			}
+		}
+		sw.client.EventEndpoint = eventEndpointURL.String()
+
+		traceEndpointURL := conf.ParsedTraceEndpointURL()
+		if traceEndpointURL == nil {
+			var err error
+			traceEndpointURL, err = conf.ParsedIngestURL().Parse(conf.DefaultTraceEndpointPath())
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error":     err,
+					"ingestURL": conf.ParsedIngestURL().String(),
+				}).Error("Could not construct trace ingest URL")
+				return nil, err
+			}
+		}
+		sw.client.TraceEndpoint = traceEndpointURL.String()
+
+		// The only reason this is on the struct and not a local var is so we can
+		// easily get diagnostic metrics from it
+		sw.serviceTracker = sw.startHostCorrelationTracking()
+	}
 
 	go sw.maintainLastMinuteActivity()
 
@@ -153,77 +218,26 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 			}
 		}()
 		sw.splunkWriter = &splunk.Handler{
-			URL:      conf.LogSplunkURL,
-			Token:    conf.LogSplunkToken,
-			Source:   conf.LogSplunkSource,
-			SourceType: conf.LogSplunkSourceType,
-			Index:    conf.LogSplunkIndex,
+			URL:           conf.LogSplunkURL,
+			Token:         conf.LogSplunkToken,
+			Source:        conf.LogSplunkSource,
+			SourceType:    conf.LogSplunkSourceType,
+			Index:         conf.LogSplunkIndex,
 			SkipTLSVerify: conf.LogSkipTLSVerify,
-			Errors: errors,
+			Errors:        errors,
 		}
 		log.Infof("Sending splunk data to %s", conf.LogSplunkURL)
 	}
-
-	sw.client.AuthToken = conf.SignalFxAccessToken
-
-	sw.client.Client.Transport = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   3 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: conf.MaxRequests,
-		IdleConnTimeout:     30 * time.Second,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
-
-	dpEndpointURL, err := conf.ParsedIngestURL().Parse("v2/datapoint")
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error":     err,
-			"ingestURL": conf.ParsedIngestURL().String(),
-		}).Error("Could not construct datapoint ingest URL")
-		return nil, err
-	}
-	sw.client.DatapointEndpoint = dpEndpointURL.String()
-
-	eventEndpointURL := conf.ParsedEventEndpointURL()
-	if eventEndpointURL == nil {
-		var err error
-		eventEndpointURL, err = conf.ParsedIngestURL().Parse("v2/event")
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error":     err,
-				"ingestURL": conf.ParsedIngestURL().String(),
-			}).Error("Could not construct event ingest URL")
-			return nil, err
-		}
-	}
-	sw.client.EventEndpoint = eventEndpointURL.String()
-
-	traceEndpointURL := conf.ParsedTraceEndpointURL()
-	if traceEndpointURL == nil {
-		var err error
-		traceEndpointURL, err = conf.ParsedIngestURL().Parse(conf.DefaultTraceEndpointPath())
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error":     err,
-				"ingestURL": conf.ParsedIngestURL().String(),
-			}).Error("Could not construct trace ingest URL")
-			return nil, err
-		}
-	}
-	sw.client.TraceEndpoint = traceEndpointURL.String()
 
 	sw.datapointFilters, err = sw.conf.DatapointFilters()
 	if err != nil {
 		return nil, err
 	}
 
-	sw.dimensionClient.Start()
-	sw.correlationClient.Start()
+	if conf.SignalFxAccessToken != "" {
+		sw.dimensionClient.Start()
+		sw.correlationClient.Start()
+	}
 
 	go sw.listenForEventsAndDimensionUpdates()
 
@@ -241,10 +255,6 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 
 	sw.datapointWriter.Start(ctx)
 
-	// The only reason this is on the struct and not a local var is so we can
-	// easily get diagnostic metrics from it
-	sw.serviceTracker = sw.startHostCorrelationTracking()
-
 	sw.spanWriter = &sfxwriter.SpanWriter{
 		PreprocessFunc: sw.preprocessSpan,
 		SendFunc:       sw.sendSpans,
@@ -255,10 +265,13 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 	}
 	sw.spanWriter.Start(ctx)
 
-	log.Infof("Sending datapoints to %s", sw.client.DatapointEndpoint)
-	log.Infof("Sending events to %s", sw.client.EventEndpoint)
-	log.Infof("Sending trace spans to %s", sw.client.TraceEndpoint)
-
+	if conf.SignalFxAccessToken != "" {
+		log.Infof("Sending datapoints to %s", sw.client.DatapointEndpoint)
+		log.Infof("Sending events to %s", sw.client.EventEndpoint)
+		log.Infof("Sending trace spans to %s", sw.client.TraceEndpoint)
+	} else {
+		log.Infof("SignalFX client is deactivated, provide a token to enable")
+	}
 	return sw, nil
 }
 
@@ -294,17 +307,18 @@ func (sw *SignalFxWriter) sendDatapoints(ctx context.Context, dps []*datapoint.D
 			sw.splunkWriter.LogDataPoint(d)
 		}
 	}
-	// This sends synchonously
-	err := sw.client.AddDatapoints(ctx, dps)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("Error shipping datapoints to SignalFx")
-		// If there is an error sending datapoints then just forget about them.
-		return err
+	if sw.client != nil {
+		// This sends synchonously
+		err := sw.client.AddDatapoints(ctx, dps)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("Error shipping datapoints to SignalFx")
+			// If there is an error sending datapoints then just forget about them.
+			return err
+		}
+		log.Debugf("Sent %d datapoints out of the agent", len(dps))
 	}
-	log.Debugf("Sent %d datapoints out of the agent", len(dps))
-
 	// dpTap.Accept handles the receiver being nil
 	sw.dpTap.Accept(dps)
 
@@ -329,18 +343,21 @@ func (sw *SignalFxWriter) sendEvents(events []*event.Event) error {
 			events[i].Dimensions["host"] = sw.hostIDDims["host"]
 		}
 
-
 		if sw.conf.LogEvents {
 			log.WithFields(log.Fields{
 				"event": spew.Sdump(events[i]),
 			}).Debug("Sending event")
 		}
-		sw.splunkWriter.LogEvent(events[i])
+		if sw.splunkWriter != nil {
+			sw.splunkWriter.LogEvent(events[i])
+		}
 	}
 
-	err := sw.client.AddEvents(context.Background(), events)
-	if err != nil {
-		return err
+	if sw.client != nil {
+		err := sw.client.AddEvents(context.Background(), events)
+		if err != nil {
+			return err
+		}
 	}
 	sw.eventsSent += int64(len(events))
 	log.Debugf("Sent %d events to SignalFx", len(events))
