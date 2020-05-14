@@ -123,7 +123,7 @@ type WriterConfig struct {
 	// Splunk index, optional name of the Splunk index to store the event in
 	LogSplunkIndex string `yaml:"splunkIndex"`
 	// Skip verifying the certificate of the HTTP Event Collector
-	LogSkipTLSVerify bool `yaml:"splunkSkipTLSVerify"`
+	LogSplunkSkipTLSVerify bool `yaml:"splunkSkipTLSVerify"`
 	// The following are propagated from elsewhere
 	HostIDDims          map[string]string      `yaml:"-"`
 	IngestURL           string                 `yaml:"-"`

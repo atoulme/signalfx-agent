@@ -223,7 +223,7 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 			Source:        conf.LogSplunkSource,
 			SourceType:    conf.LogSplunkSourceType,
 			Index:         conf.LogSplunkIndex,
-			SkipTLSVerify: conf.LogSkipTLSVerify,
+			SkipTLSVerify: conf.LogSplunkSkipTLSVerify,
 			Errors:        errors,
 		}
 		log.Infof("Sending splunk data to %s", conf.LogSplunkURL)
