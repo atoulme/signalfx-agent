@@ -11,6 +11,7 @@ import (
 )
 
 var essentialWriterConfig = config.WriterConfig{
+	SignalFxAccessToken:                 "11111",
 	PropertiesHistorySize:               100,
 	PropertiesSendDelaySeconds:          1,
 	TraceExportFormat:                   "zipkin",
