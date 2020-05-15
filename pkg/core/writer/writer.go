@@ -51,7 +51,7 @@ type SignalFxWriter struct {
 	dimensionClient   *dimensions.DimensionClient
 	datapointWriter   *sfxwriter.DatapointWriter
 	spanWriter        *sfxwriter.SpanWriter
-	splunkWriter      *splunk.Handler
+	splunkWriter      *splunk.Writer
 
 	// Monitors should send events to this
 	eventChan     chan *event.Event
@@ -206,27 +206,14 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 
 	go sw.maintainLastMinuteActivity()
 
-	if conf.LogSplunkEnabled {
-		errors := make(chan error)
-		go func() {
-			for {
-				err := <-errors
+	if conf.Splunk.Enabled {
+		writer, err := splunk.Build(conf.Splunk.URL, conf.Splunk.Token, conf.Splunk.Source, conf.Splunk.SourceType, conf.Splunk.Index, conf.Splunk.SkipTLSVerify, conf.Splunk.Host)
 
-				log.WithFields(log.Fields{
-					"error": err,
-				}).Error("Error shipping data to Splunk")
-			}
-		}()
-		sw.splunkWriter = &splunk.Handler{
-			URL:           conf.LogSplunkURL,
-			Token:         conf.LogSplunkToken,
-			Source:        conf.LogSplunkSource,
-			SourceType:    conf.LogSplunkSourceType,
-			Index:         conf.LogSplunkIndex,
-			SkipTLSVerify: conf.LogSplunkSkipTLSVerify,
-			Errors:        errors,
+		if err != nil {
+			return nil, err
 		}
-		log.Infof("Sending splunk data to %s", conf.LogSplunkURL)
+		sw.splunkWriter = &writer
+		log.Infof("Sending splunk data to %s", conf.Splunk.URL)
 	}
 
 	sw.datapointFilters, err = sw.conf.DatapointFilters()

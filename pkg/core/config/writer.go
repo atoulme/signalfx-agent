@@ -11,6 +11,26 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// SplunkConfig configures the writer specifically writing to Splunk.
+type SplunkConfig struct {
+	// Enable logging to a Splunk Enterprise instance
+	Enabled bool `yaml:"enabled"`
+	// url to Splunk HTTP Event Collector
+	URL string `yaml:"url"`
+	// Splunk HTTP Event Collector token
+	Token string `yaml:"token"`
+	// Splunk source field value, description of the source of the event
+	Source string `yaml:"source"`
+	// Splunk source type, optional name of a sourcetype field value
+	SourceType string `yaml:"sourceType"`
+	// Splunk index, optional name of the Splunk index to store the event in
+	Index string `yaml:"index"`
+	// Skip verifying the certificate of the HTTP Event Collector
+	SkipTLSVerify bool `yaml:"skipTLSVerify"`
+	// The host of the collector, identifying the agent
+	Host string `yaml:"host" default:"signalfx-agent"`
+}
+
 // WriterConfig holds configuration for the datapoint writer.
 type WriterConfig struct {
 	// The maximum number of datapoints to include in a batch before sending the
@@ -110,20 +130,8 @@ type WriterConfig struct {
 	// handle the volume of trace spans and should be upgraded to more powerful
 	// hardware/networking.
 	MaxTraceSpansInFlight uint `yaml:"maxTraceSpansInFlight" default:"100000"`
-	// Enable logging to a Splunk Enterprise instance
-	LogSplunkEnabled bool `yaml:"splunkEnabled"`
-	// URL to Splunk HTTP Event Collector
-	LogSplunkURL string `yaml:"splunkURL"`
-	// Splunk HTTP Event Collector token
-	LogSplunkToken string `yaml:"splunkToken"`
-	// Splunk source field value, description of the source of the event
-	LogSplunkSource string `yaml:"splunkSource"`
-	// Splunk source type, optional name of a sourcetype field value
-	LogSplunkSourceType string `yaml:"splunkSourceType"`
-	// Splunk index, optional name of the Splunk index to store the event in
-	LogSplunkIndex string `yaml:"splunkIndex"`
-	// Skip verifying the certificate of the HTTP Event Collector
-	LogSplunkSkipTLSVerify bool `yaml:"splunkSkipTLSVerify"`
+	// Configures the writer specifically writing to Splunk.
+	Splunk SplunkConfig `yaml:"splunk"`
 	// The following are propagated from elsewhere
 	HostIDDims          map[string]string      `yaml:"-"`
 	IngestURL           string                 `yaml:"-"`

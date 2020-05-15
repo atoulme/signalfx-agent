@@ -7,49 +7,63 @@ import (
 	"github.com/signalfx/golib/v3/datapoint"
 	"github.com/signalfx/golib/v3/event"
 	"github.com/signalfx/signalfx-agent/pkg/core/common/httpclient"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"sync"
+	"strings"
 	"time"
 )
 
-// Handler posts data to Splunk HTTP Event Collector.
-type Handler struct {
-	HTTPClient    *http.Client
-	URL           string
-	Hostname      string
-	Token         string
-	Source        string
-	SourceType    string
-	Index         string
-	SkipTLSVerify bool
-	Errors        chan error
-	once          sync.Once
-	events        chan splunkMessage
-	sendQueue     chan []splunkMessage
+// Writer posts data to Splunk HTTP Event Collector.
+type Writer struct {
+	httpClient    *http.Client
+	url           string
+	hostname      string
+	token         string
+	source        string
+	sourceType    string
+	index         string
+	skipTLSVerify bool
+	events        chan interface{}
+	sendQueue     chan []interface{}
 }
 
-func (h *Handler) init() {
-	if h.HTTPClient == nil {
-		httpConfig := httpclient.HTTPConfig{
-			SkipVerify: h.SkipTLSVerify,
-		}
-
-		httpClient, err := httpConfig.Build()
-		if err != nil {
-
-		}
-		h.HTTPClient = httpClient
+// Builds a Splunk Writer.
+func Build(url string, token string, source string, sourceType string, index string, skipTLSVerify bool, hostname string) (Writer, error) {
+	handler := Writer{
+		url:           url,
+		token:         token,
+		source:        source,
+		sourceType:    sourceType,
+		index:         index,
+		skipTLSVerify: skipTLSVerify,
+		hostname:      hostname,
 	}
-	if h.Hostname == "" {
-		h.Hostname, _ = os.Hostname()
+	err := handler.init()
+	return handler, err
+}
+
+func (h *Writer) init() error {
+	httpConfig := httpclient.HTTPConfig{
+		SkipVerify: h.skipTLSVerify,
+		UseHTTPS:   strings.HasPrefix(h.url, "https"),
 	}
-	h.sendQueue = make(chan []splunkMessage)
-	h.events = make(chan splunkMessage)
+
+	httpClient, err := httpConfig.Build()
+	if err != nil {
+		return err
+	}
+	h.httpClient = httpClient
+
+	if h.hostname == "" {
+		h.hostname, _ = os.Hostname()
+	}
+	h.sendQueue = make(chan []interface{})
+	h.events = make(chan interface{})
 	go func() {
-		eventsToSend := make([]splunkMessage, 0)
+		eventsToSend := make([]interface{}, 0)
 		ticker := time.NewTicker(1 * time.Second)
 		for {
 			select {
@@ -57,14 +71,14 @@ func (h *Handler) init() {
 				eventsToSend = append(eventsToSend, e)
 				if len(eventsToSend) > 50 {
 					oldEvents := eventsToSend
-					eventsToSend = make([]splunkMessage, 0)
+					eventsToSend = make([]interface{}, 0)
 					h.sendQueue <- oldEvents
 				}
 				break
 			case <-ticker.C:
 				if len(eventsToSend) > 0 {
 					oldEvents := eventsToSend
-					eventsToSend = make([]splunkMessage, 0)
+					eventsToSend = make([]interface{}, 0)
 					h.sendQueue <- oldEvents
 				}
 			}
@@ -76,6 +90,7 @@ func (h *Handler) init() {
 			h.logEvents(events)
 		}
 	}()
+	return nil
 }
 
 type eventdata struct {
@@ -86,12 +101,8 @@ type eventdata struct {
 	Properties map[string]string `json:"properties"`
 }
 
-type splunkMessage interface {
-	Marshall() ([]byte, error)
-}
-
 type splunkMetric struct {
-	Time       int64             `json:"time"`                 // epoch time in nano-seconds
+	Time       int64             `json:"time"`             // epoch time
 	Host       string            `json:"host"`                 // hostname
 	Source     string            `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
 	SourceType string            `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk
@@ -101,21 +112,12 @@ type splunkMetric struct {
 }
 
 type splunkEvent struct {
-	Time       int64     `json:"time"`                 // epoch time in nano-seconds
+	Time       int64     `json:"time"`             // epoch time
 	Host       string    `json:"host"`                 // hostname
 	Source     string    `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
 	SourceType string    `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk
 	Index      string    `json:"index,omitempty"`      // optional name of the Splunk index to store the event in; not required if the token has a default index set in Splunk
 	Event      eventdata `json:"event"`                // event data
-}
-
-func (s splunkMetric) Marshall() ([]byte, error) {
-	b, err := json.Marshal(s)
-	return b, err
-}
-
-func (s splunkEvent) Marshall() ([]byte, error) {
-	return json.Marshal(s)
 }
 
 func toString(obj interface{}) string {
@@ -125,8 +127,14 @@ func toString(obj interface{}) string {
 	return fmt.Sprintf("%v", obj)
 }
 
-func (h *Handler) LogDataPoint(d *datapoint.Datapoint) {
-	h.once.Do(h.init)
+func computeTime(timestamp time.Time) int64 {
+	if timestamp.IsZero() {
+		return time.Now().UnixNano() / time.Millisecond.Nanoseconds()
+	}
+	return timestamp.UnixNano() / time.Millisecond.Nanoseconds()
+}
+
+func (h *Writer) LogDataPoint(d *datapoint.Datapoint) {
 	fields := make(map[string]string)
 
 	for key, v := range d.Meta {
@@ -141,19 +149,18 @@ func (h *Handler) LogDataPoint(d *datapoint.Datapoint) {
 	fields[fmt.Sprintf("metric_name:%s", d.Metric)] = d.Value.String()
 
 	newEvent := splunkMetric{
-		Time:       d.Timestamp.UnixNano(),
-		Host:       h.Hostname,
-		Source:     h.Source,
-		SourceType: h.SourceType,
-		Index:      h.Index,
+		Time:       computeTime(d.Timestamp),
+		Host:       h.hostname,
+		Source:     h.source,
+		SourceType: h.sourceType,
+		Index:      h.index,
 		Event:      "metric",
 		Fields:     fields,
 	}
 	h.events <- newEvent
 }
 
-func (h *Handler) LogEvent(e *event.Event) {
-	h.once.Do(h.init)
+func (h *Writer) LogEvent(e *event.Event) {
 	props := make(map[string]string)
 	for key, v := range e.Properties {
 		if v != nil {
@@ -168,22 +175,24 @@ func (h *Handler) LogEvent(e *event.Event) {
 		}
 	}
 	newEvent := splunkEvent{
-		Time:       e.Timestamp.UnixNano(),
-		Host:       h.Hostname,
-		Source:     h.Source,
-		SourceType: h.SourceType,
-		Index:      h.Index,
+		Time:       computeTime(e.Timestamp),
+		Host:       h.hostname,
+		Source:     h.source,
+		SourceType: h.sourceType,
+		Index:      h.index,
 		Event:      eventdata{Properties: props, Dimensions: e.Dimensions, Meta: meta, EventType: e.EventType, Category: e.Category},
 	}
 	h.events <- newEvent
 }
 
-func (h *Handler) logEvents(events []splunkMessage) {
+func (h *Writer) logEvents(events []interface{}) {
 	buf := new(bytes.Buffer)
 	for _, e := range events {
-		b, err := e.Marshall()
+		b, err := json.Marshal(e)
 		if err != nil {
-			h.Errors <- err
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("Error marshaling data to Splunk")
 		} else {
 			buf.Write(b)
 			buf.WriteString("\r\n\r\n")
@@ -192,20 +201,22 @@ func (h *Handler) logEvents(events []splunkMessage) {
 
 	err := h.doRequest(buf)
 	if err != nil {
-		h.Errors <- err
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("Error sending data to Splunk")
 	}
 }
 
-func (h *Handler) doRequest(b io.Reader) error {
-	url := h.URL
+func (h *Writer) doRequest(b io.Reader) error {
+	url := h.url
 	req, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Splunk "+h.Token)
+	req.Header.Add("Authorization", "Splunk "+h.token)
 
-	res, err := h.HTTPClient.Do(req)
+	res, err := h.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -220,7 +231,7 @@ func (h *Handler) doRequest(b io.Reader) error {
 		buf := new(bytes.Buffer)
 		_, _ = buf.ReadFrom(res.Body)
 		responseBody := buf.String()
-		err = fmt.Errorf("%s\n%s", responseBody, b)
+		err = fmt.Errorf("%s", responseBody)
 	}
 	return err
 }
