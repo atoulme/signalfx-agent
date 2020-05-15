@@ -52583,6 +52583,62 @@
               "required": false,
               "type": "uint",
               "elementKind": ""
+            },
+            {
+              "yamlName": "splunkEnabled",
+              "doc": "Enable logging to a Splunk Enterprise instance",
+              "default": false,
+              "required": false,
+              "type": "bool",
+              "elementKind": ""
+            },
+            {
+              "yamlName": "splunkURL",
+              "doc": "URL to Splunk HTTP Event Collector",
+              "default": "",
+              "required": false,
+              "type": "string",
+              "elementKind": ""
+            },
+            {
+              "yamlName": "splunkToken",
+              "doc": "Splunk HTTP Event Collector token",
+              "default": "",
+              "required": false,
+              "type": "string",
+              "elementKind": ""
+            },
+            {
+              "yamlName": "splunkSource",
+              "doc": "Splunk source field value, description of the source of the event",
+              "default": "",
+              "required": false,
+              "type": "string",
+              "elementKind": ""
+            },
+            {
+              "yamlName": "splunkSourceType",
+              "doc": "Splunk source type, optional name of a sourcetype field value",
+              "default": "",
+              "required": false,
+              "type": "string",
+              "elementKind": ""
+            },
+            {
+              "yamlName": "splunkIndex",
+              "doc": "Splunk index, optional name of the Splunk index to store the event in",
+              "default": "",
+              "required": false,
+              "type": "string",
+              "elementKind": ""
+            },
+            {
+              "yamlName": "splunkSkipTLSVerify",
+              "doc": "Skip verifying the certificate of the HTTP Event Collector",
+              "default": false,
+              "required": false,
+              "type": "bool",
+              "elementKind": ""
             }
           ]
         }
