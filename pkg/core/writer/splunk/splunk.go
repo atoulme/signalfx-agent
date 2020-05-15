@@ -97,17 +97,17 @@ type splunkMetric struct {
 	Source     string            `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
 	SourceType string            `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk
 	Index      string            `json:"index,omitempty"`      // optional name of the Splunk index to store the event in; not required if the token has a default index set in Splunk
-	Event      string            `json:"event"`              // type of event: this is a metric.
+	Event      string            `json:"event"`                // type of event: this is a metric.
 	Fields     map[string]string `json:"fields"`               // metric data
 }
 
 type splunkEvent struct {
-	Time       int64       `json:"time"`                 // epoch time in nano-seconds
-	Host       string      `json:"host"`                 // hostname
-	Source     string      `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
-	SourceType string      `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk
-	Index      string      `json:"index,omitempty"`      // optional name of the Splunk index to store the event in; not required if the token has a default index set in Splunk
-	Event      eventdata	`json:"event"`                // event data
+	Time       int64     `json:"time"`                 // epoch time in nano-seconds
+	Host       string    `json:"host"`                 // hostname
+	Source     string    `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
+	SourceType string    `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk
+	Index      string    `json:"index,omitempty"`      // optional name of the Splunk index to store the event in; not required if the token has a default index set in Splunk
+	Event      eventdata `json:"event"`                // event data
 }
 
 func (s splunkMetric) Marshall() ([]byte, error) {

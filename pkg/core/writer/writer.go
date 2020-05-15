@@ -240,7 +240,6 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 		go sw.listenForEventsAndDimensionUpdates()
 	}
 
-
 	sw.datapointWriter = &sfxwriter.DatapointWriter{
 		PreprocessFunc: sw.preprocessDatapoint,
 		SendFunc:       sw.sendDatapoints,
