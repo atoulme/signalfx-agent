@@ -2,12 +2,12 @@ package splunk
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/signalfx/golib/v3/datapoint"
 	"github.com/signalfx/golib/v3/event"
+	"github.com/signalfx/signalfx-agent/pkg/core/common/httpclient"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -34,8 +34,15 @@ type Handler struct {
 
 func (h *Handler) init() {
 	if h.HTTPClient == nil {
-		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: h.SkipTLSVerify}}
-		h.HTTPClient = &http.Client{Timeout: time.Second * 20, Transport: tr}
+		httpConfig := httpclient.HTTPConfig{
+			SkipVerify: h.SkipTLSVerify,
+		}
+
+		httpClient, err := httpConfig.Build()
+		if err != nil {
+
+		}
+		h.HTTPClient = httpClient
 	}
 	if h.Hostname == "" {
 		h.Hostname, _ = os.Hostname()
