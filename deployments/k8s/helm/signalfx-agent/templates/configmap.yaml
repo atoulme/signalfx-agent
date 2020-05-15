@@ -43,19 +43,21 @@ data:
 
     {{- if .Values.splunkUrl }}
     writer:
-      splunkEnabled: true
-      splunkURL: {{ .Values.splunkUrl }}
-      splunkToken: ${SPLUNK_TOKEN}
-      {{- if .Values.splunkIndex }}
-      splunkIndex: {{ .Values.splunkIndex }}
-      {{- end }}
-      {{- if .Values.splunkSource }}
-      splunkSource: {{ .Values.splunkSource }}
-      {{- end }}
-      {{- if .Values.splunkSourceType }}
-      splunkSourceType: {{ .Values.splunkSourceType }}
-      {{- end }}
-      splunkSkipTLSVerify: {{ .Values.splunkSkipTLSVerify | default "false" }}
+      splunk:
+        enabled: true
+        url: {{ .Values.splunkUrl }}
+        token: ${SPLUNK_TOKEN}
+        {{- if .Values.splunkIndex }}
+        index: {{ .Values.splunkIndex }}
+        {{- end }}
+        {{- if .Values.splunkSource }}
+        source: {{ .Values.splunkSource }}
+        {{- end }}
+        {{- if .Values.splunkSourceType }}
+        sourceType: {{ .Values.splunkSourceType }}
+        {{- end }}
+        skipTLSVerify: {{ .Values.splunkSkipTLSVerify | default "false" }}
+        host: {{ .Values.splunkHost }}
     {{- end }}
 {{- $major_version := .Values.agentVersion | default "0.0.0" | splitList "." | first | atoi -}}
 {{- if lt $major_version 5 }}

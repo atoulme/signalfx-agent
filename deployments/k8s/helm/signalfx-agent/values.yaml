@@ -32,6 +32,9 @@ splunkIndex: ""
 # Skip verifying the certificate of the HTTP Event Collector
 splunkSkipTLSVerify: false
 
+# The hostname of the agent sent to Splunk
+splunkHost: "signalfx-agent"
+
 # An additional set of global dimension to set on all datapoints coming out of
 # the agent.  The `kubernetes_cluster` dimension will always be set as a global
 # dimension based on the `clusterName` value.
