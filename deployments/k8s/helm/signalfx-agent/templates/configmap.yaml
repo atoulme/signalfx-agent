@@ -41,8 +41,8 @@ data:
 
     cluster: {{ required ".Values.clusterName is required" .Values.clusterName }}
 
+    {{- if .Values.splunkUrl }}
     writer:
-      {{- if .Values.splunkUrl }}
       splunkEnabled: true
       splunkURL: {{ .Values.splunkUrl }}
       splunkToken: ${SPLUNK_TOKEN}
@@ -56,7 +56,7 @@ data:
       splunkSourceType: {{ .Values.splunkSourceType }}
       {{- end }}
       splunkSkipTLSVerify: {{ .Values.splunkSkipTLSVerify | default "false" }}
-      {{- end }}
+    {{- end }}
 {{- $major_version := .Values.agentVersion | default "0.0.0" | splitList "." | first | atoi -}}
 {{- if lt $major_version 5 }}
     sendMachineID: false
