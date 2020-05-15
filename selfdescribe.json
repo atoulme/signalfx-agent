@@ -52586,7 +52586,7 @@
             },
             {
               "yamlName": "splunkEnabled",
-              "doc": "Enable logging to a Splunk Enterprise instance",
+              "doc": "",
               "default": false,
               "required": false,
               "type": "bool",
@@ -52594,7 +52594,7 @@
             },
             {
               "yamlName": "splunkURL",
-              "doc": "URL to Splunk HTTP Event Collector",
+              "doc": "",
               "default": "",
               "required": false,
               "type": "string",
@@ -52602,7 +52602,7 @@
             },
             {
               "yamlName": "splunkToken",
-              "doc": "Splunk HTTP Event Collector token",
+              "doc": "",
               "default": "",
               "required": false,
               "type": "string",
@@ -52610,7 +52610,7 @@
             },
             {
               "yamlName": "splunkSource",
-              "doc": "Splunk source field value, description of the source of the event",
+              "doc": "",
               "default": "",
               "required": false,
               "type": "string",
@@ -52618,7 +52618,7 @@
             },
             {
               "yamlName": "splunkSourceType",
-              "doc": "Splunk source type, optional name of a sourcetype field value",
+              "doc": "",
               "default": "",
               "required": false,
               "type": "string",
@@ -52626,7 +52626,7 @@
             },
             {
               "yamlName": "splunkIndex",
-              "doc": "Splunk index, optional name of the Splunk index to store the event in",
+              "doc": "",
               "default": "",
               "required": false,
               "type": "string",
@@ -52634,7 +52634,7 @@
             },
             {
               "yamlName": "splunkSkipTLSVerify",
-              "doc": "Skip verifying the certificate of the HTTP Event Collector",
+              "doc": "",
               "default": false,
               "required": false,
               "type": "bool",
