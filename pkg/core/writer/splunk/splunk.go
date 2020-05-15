@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/signalfx/golib/v3/datapoint"
-	"github.com/signalfx/golib/v3/event"
-	"github.com/signalfx/signalfx-agent/pkg/core/common/httpclient"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/signalfx/golib/v3/datapoint"
+	"github.com/signalfx/golib/v3/event"
+	"github.com/signalfx/signalfx-agent/pkg/core/common/httpclient"
+	log "github.com/sirupsen/logrus"
 )
 
 // Writer posts data to Splunk HTTP Event Collector.
@@ -102,7 +103,7 @@ type eventdata struct {
 }
 
 type splunkMetric struct {
-	Time       int64             `json:"time"`             // epoch time
+	Time       int64             `json:"time"`                 // epoch time
 	Host       string            `json:"host"`                 // hostname
 	Source     string            `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
 	SourceType string            `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk
@@ -112,7 +113,7 @@ type splunkMetric struct {
 }
 
 type splunkEvent struct {
-	Time       int64     `json:"time"`             // epoch time
+	Time       int64     `json:"time"`                 // epoch time
 	Host       string    `json:"host"`                 // hostname
 	Source     string    `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
 	SourceType string    `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk

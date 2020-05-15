@@ -2,19 +2,20 @@ package splunk
 
 import (
 	"encoding/json"
-	"github.com/signalfx/golib/v3/event"
 	"testing"
 	"time"
+
+	"github.com/signalfx/golib/v3/event"
 )
 
 func TestSplunkEventMarshal(t *testing.T) {
 	myEvent := splunkEvent{
-		Time:       time.Date(1990,1,1,0,0,0,0, time.UTC).UnixNano() / int64(time.Millisecond),
+		Time:       time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC).UnixNano() / int64(time.Millisecond),
 		Host:       "localhost",
 		Source:     "sfx",
 		SourceType: "sfx",
 		Index:      "sfx",
-		Event:      eventdata{
+		Event: eventdata{
 			Category:   event.USERDEFINED,
 			EventType:  "Type",
 			Meta:       map[string]string{"foo": "bar"},
@@ -32,16 +33,15 @@ func TestSplunkEventMarshal(t *testing.T) {
 	}
 }
 
-
 func TestSplunkMetricMarshal(t *testing.T) {
 	myMetric := splunkMetric{
-		Time:       time.Date(1990,1,1,0,0,0,0, time.UTC).UnixNano() / int64(time.Millisecond),
+		Time:       time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC).UnixNano() / int64(time.Millisecond),
 		Host:       "localhost",
 		Source:     "sfx",
 		SourceType: "sfx",
 		Index:      "sfx",
-		Event: "metric",
-		Fields: map[string]string{"foo":"bar"},
+		Event:      "metric",
+		Fields:     map[string]string{"foo": "bar"},
 	}
 	b, err := json.Marshal(myMetric)
 	if err != nil {
