@@ -21,6 +21,8 @@ data:
 
     cluster: MY-CLUSTER
 
+    writer:
+
     logging:
       level: info
       format: text

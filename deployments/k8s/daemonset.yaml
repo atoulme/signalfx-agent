@@ -69,6 +69,11 @@ spec:
             secretKeyRef:
               name: signalfx-agent
               key: access-token
+        - name: SPLUNK_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: signalfx-agent
+              key: splunk-token
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:

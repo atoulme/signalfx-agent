@@ -13,7 +13,10 @@ data:
 {{- if .Values.agentConfig }}
 {{ toYaml .Values.agentConfig | indent 4 }}
 {{- else }}
+
+    {{- if or (.Values.signalFxAccessToken) (.Values.signalFxAccessTokenSecretName)}}
     signalFxAccessToken: ${SFX_ACCESS_TOKEN}
+    {{- end }}
 
     signalFxRealm: {{ .Values.signalFxRealm  | default "us0" }}
 
@@ -38,6 +41,22 @@ data:
 
     cluster: {{ required ".Values.clusterName is required" .Values.clusterName }}
 
+    writer:
+      {{- if .Values.splunkUrl }}
+      splunkEnabled: true
+      splunkURL: {{ .Values.splunkUrl }}
+      splunkToken: ${SPLUNK_TOKEN}
+      {{- if .Values.splunkIndex }}
+      splunkIndex: {{ .Values.splunkIndex }}
+      {{- end }}
+      {{- if .Values.splunkSource }}
+      splunkSource: {{ .Values.splunkSource }}
+      {{- end }}
+      {{- if .Values.splunkSourceType }}
+      splunkSourceType: {{ .Values.splunkSourceType }}
+      {{- end }}
+      splunkSkipTLSVerify: {{ .Values.splunkSkipTLSVerify | default "false" }}
+      {{- end }}
 {{- $major_version := .Values.agentVersion | default "0.0.0" | splitList "." | first | atoi -}}
 {{- if lt $major_version 5 }}
     sendMachineID: false
