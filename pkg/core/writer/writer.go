@@ -11,11 +11,12 @@ package writer
 import (
 	"context"
 	"fmt"
-	"github.com/signalfx/signalfx-agent/pkg/core/writer/splunk"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/signalfx/signalfx-agent/pkg/core/writer/splunk"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/signalfx/golib/v3/datapoint"
