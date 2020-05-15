@@ -3,7 +3,6 @@ package splunk
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/signalfx/golib/v3/datapoint"
 	"github.com/signalfx/golib/v3/event"
@@ -122,9 +121,8 @@ func (s splunkEvent) Marshall() ([]byte, error) {
 func toString(obj interface{}) string {
 	if stringer, ok := obj.(fmt.Stringer); ok {
 		return stringer.String()
-	} else {
-		return fmt.Sprintf("%v", obj)
 	}
+	return fmt.Sprintf("%v", obj)
 }
 
 func (h *Handler) LogDataPoint(d *datapoint.Datapoint) {
@@ -198,7 +196,7 @@ func (h *Handler) logEvents(events []splunkMessage) {
 	}
 }
 
-func (h *Handler) doRequest(b *bytes.Buffer) error {
+func (h *Handler) doRequest(b io.Reader) error {
 	url := h.URL
 	req, err := http.NewRequest("POST", url, b)
 	if err != nil {
@@ -222,7 +220,7 @@ func (h *Handler) doRequest(b *bytes.Buffer) error {
 		buf := new(bytes.Buffer)
 		_, _ = buf.ReadFrom(res.Body)
 		responseBody := buf.String()
-		err = errors.New(fmt.Sprintf("%s\n%s", responseBody, b))
+		err = fmt.Errorf("%s\n%s", responseBody, b)
 	}
 	return err
 }
