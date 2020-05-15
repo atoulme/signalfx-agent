@@ -30,7 +30,7 @@ type Writer struct {
 	sendQueue     chan []interface{}
 }
 
-// Builds a Splunk Writer.
+// Build a Splunk Writer.
 func Build(url string, token string, source string, sourceType string, index string, skipTLSVerify bool, hostname string) (Writer, error) {
 	handler := Writer{
 		url:           url,
@@ -134,6 +134,7 @@ func computeTime(timestamp time.Time) int64 {
 	return timestamp.UnixNano() / time.Millisecond.Nanoseconds()
 }
 
+// LogDataPoint logs a data point as a Splunk metric event
 func (h *Writer) LogDataPoint(d *datapoint.Datapoint) {
 	fields := make(map[string]string)
 
@@ -160,6 +161,7 @@ func (h *Writer) LogDataPoint(d *datapoint.Datapoint) {
 	h.events <- newEvent
 }
 
+// LogEvent logs an event as a Splunk metric event
 func (h *Writer) LogEvent(e *event.Event) {
 	props := make(map[string]string)
 	for key, v := range e.Properties {
