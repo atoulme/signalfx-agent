@@ -237,9 +237,9 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 	if conf.SignalFxAccessToken != "" {
 		sw.dimensionClient.Start()
 		sw.correlationClient.Start()
+		go sw.listenForEventsAndDimensionUpdates()
 	}
 
-	go sw.listenForEventsAndDimensionUpdates()
 
 	sw.datapointWriter = &sfxwriter.DatapointWriter{
 		PreprocessFunc: sw.preprocessDatapoint,
