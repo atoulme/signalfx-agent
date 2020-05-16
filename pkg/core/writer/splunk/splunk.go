@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/signalfx/golib/v3/trace"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,28 +20,34 @@ import (
 
 // Writer posts data to Splunk HTTP Event Collector.
 type Writer struct {
-	httpClient    *http.Client
-	url           string
-	hostname      string
-	token         string
-	source        string
-	sourceType    string
-	index         string
-	skipTLSVerify bool
-	events        chan interface{}
-	sendQueue     chan []interface{}
+	httpClient      *http.Client
+	url             string
+	hostname        string
+	token           string
+	traceSource     string
+	source          string
+	traceSourceType string
+	sourceType      string
+	index           string
+	traceIndex      string
+	skipTLSVerify   bool
+	events          chan interface{}
+	sendQueue       chan []interface{}
 }
 
 // Build a Splunk Writer.
-func Build(url string, token string, source string, sourceType string, index string, skipTLSVerify bool, hostname string) (Writer, error) {
+func Build(url string, token string, source string, sourceType string, index string, skipTLSVerify bool, hostname string, traceIndex string, traceSource string, traceSourceType string) (Writer, error) {
 	handler := Writer{
-		url:           url,
-		token:         token,
-		source:        source,
-		sourceType:    sourceType,
-		index:         index,
-		skipTLSVerify: skipTLSVerify,
-		hostname:      hostname,
+		url:             url,
+		token:           token,
+		source:          source,
+		sourceType:      sourceType,
+		traceIndex:      traceIndex,
+		traceSource:     traceSource,
+		traceSourceType: traceSourceType,
+		index:           index,
+		skipTLSVerify:   skipTLSVerify,
+		hostname:        hostname,
 	}
 	err := handler.init()
 	return handler, err
@@ -100,6 +107,15 @@ type eventdata struct {
 	Meta       map[string]string `json:"meta"`
 	Dimensions map[string]string `json:"dimensions"`
 	Properties map[string]string `json:"properties"`
+}
+
+type splunkSpan struct {
+	Time       int64      `json:"time"`                 // epoch time
+	Host       string     `json:"host"`                 // hostname
+	Source     string     `json:"source,omitempty"`     // optional description of the source of the event; typically the app's name
+	SourceType string     `json:"sourcetype,omitempty"` // optional name of a Splunk parsing configuration; this is usually inferred by Splunk
+	Index      string     `json:"index,omitempty"`      // optional name of the Splunk index to store the event in; not required if the token has a default index set in Splunk
+	Event      trace.Span `json:"event"`                // a trace span
 }
 
 type splunkMetric struct {
@@ -186,6 +202,20 @@ func (h *Writer) LogEvent(e *event.Event) {
 		Event:      eventdata{Properties: props, Dimensions: e.Dimensions, Meta: meta, EventType: e.EventType, Category: e.Category},
 	}
 	h.events <- newEvent
+}
+
+func (h *Writer) LogSpan(span *trace.Span) {
+
+	newEvent := splunkSpan{
+		Time:       *span.Timestamp,
+		Host:       h.hostname,
+		Source:     h.traceSource,
+		SourceType: h.traceSourceType,
+		Index:      h.traceIndex,
+		Event:      *span,
+	}
+	h.events <- newEvent
+
 }
 
 func (h *Writer) logEvents(events []interface{}) {

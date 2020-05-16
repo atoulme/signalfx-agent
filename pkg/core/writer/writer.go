@@ -208,7 +208,7 @@ func New(conf *config.WriterConfig, dpChan chan []*datapoint.Datapoint, eventCha
 	go sw.maintainLastMinuteActivity()
 
 	if conf.Splunk.Enabled {
-		writer, err := splunk.Build(conf.Splunk.URL, conf.Splunk.Token, conf.Splunk.Source, conf.Splunk.SourceType, conf.Splunk.Index, conf.Splunk.SkipTLSVerify, conf.Splunk.Host)
+		writer, err := splunk.Build(conf.Splunk.URL, conf.Splunk.Token, conf.Splunk.Source, conf.Splunk.SourceType, conf.Splunk.Index, conf.Splunk.SkipTLSVerify, conf.Splunk.Host, conf.Splunk.TraceIndex, conf.Splunk.TraceSource, conf.Splunk.TraceSourceType)
 
 		if err != nil {
 			return nil, err

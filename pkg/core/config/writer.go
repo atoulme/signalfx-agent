@@ -29,6 +29,12 @@ type SplunkConfig struct {
 	SkipTLSVerify bool `yaml:"skipTLSVerify"`
 	// The host of the collector, identifying the agent
 	Host string `yaml:"host" default:"signalfx-agent"`
+	// Splunk index, specifically for traces (must be event type)
+	TraceIndex string `yaml:"traceIndex"`
+	// Splunk source field value, description of the source of the trace
+	TraceSource string `yaml:"traceSource"`
+	// Splunk trace source type, optional name of a sourcetype field value
+	TraceSourceType string `yaml:"traceSourceType"`
 }
 
 // WriterConfig holds configuration for the datapoint writer.

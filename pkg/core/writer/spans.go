@@ -17,6 +17,11 @@ func (sw *SignalFxWriter) sendSpans(ctx context.Context, spans []*trace.Span) er
 	if sw.serviceTracker != nil {
 		sw.serviceTracker.AddSpans(sw.ctx, spans)
 	}
+	if sw.splunkWriter != nil {
+		for _, span := range spans {
+			sw.splunkWriter.LogSpan(span)
+		}
+	}
 
 	if sw.client != nil {
 		// This sends synchonously
@@ -30,6 +35,7 @@ func (sw *SignalFxWriter) sendSpans(ctx context.Context, spans []*trace.Span) er
 		}
 		log.Debugf("Sent %d spans out of the agent", len(spans))
 	}
+
 	return nil
 }
 
