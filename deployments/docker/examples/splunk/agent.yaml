@@ -21,6 +21,8 @@ writer:
     token: ${SPLUNK_TOKEN}
     index: ${SPLUNK_INDEX}
     source: ${SPLUNK_SOURCE}
+    traceIndex: ${SPLUNK_TRACE_INDEX}
+    traceSource: ${SPLUNK_TRACE_SOURCE}
     skipTLSVerify: ${SPLUNK_SKIP_TLS_VERIFY}
 monitors:
   - {"#from": "/etc/signalfx/monitors/*.yaml", flatten: true, optional: true}
@@ -35,3 +37,5 @@ monitors:
   - type: host-metadata
   - type: processlist
   - type: docker-container-stats
+  - type: signalfx-forwarder
+    listenAddress: 0.0.0.0:9080
