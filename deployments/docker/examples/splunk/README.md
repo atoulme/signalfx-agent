@@ -11,7 +11,7 @@ To deploy the example, open a terminal and in this directory type:
 $> docker-compose up
 ```
 :
-Splunk will become available on port 8000. You can login on [http://localhost:18000] with `admin` and `changeme`.
+Splunk will become available on port 18000. You can login on [http://localhost:18000] with `admin` and `changeme`.
 
 Once logged in, visit the [analytics workspace](http://localhost:18000/en-US/app/search/analytics_workspace) to see which metrics are sent by the SignalFX Agent.
 
